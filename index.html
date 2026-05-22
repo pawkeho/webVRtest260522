@@ -2,24 +2,23 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Web VR Prototype for iPhone</title>
-    <!-- A-Frameの最新版を読み込む -->
+    <title>Web VR for iPhone</title>
+    <!-- 1. WebXRポリフィル（これがiOSで画面を割るための魔法です） -->
+    <script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@latest/build/webxr-polyfill.js"></script>
+    <script>
+      // A-Frameより先にポリフィルを有効化
+      var polyfill = new WebXRPolyfill();
+    </script>
+    <!-- 2. A-Frame本体 -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   </head>
   <body>
     <a-scene>
-      <!-- 適当なオブジェクトの配置 -->
-      <!-- position="x y z" (単位はメートル) -->
       <a-box position="-1 0.5 -3" rotation="0 45 0" color="#4CC3D9"></a-box>
       <a-sphere position="0 1.25 -5" radius="1.25" color="#EF2D5E"></a-sphere>
       <a-cylinder position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D"></a-cylinder>
-      
-      <!-- 地面と空 -->
       <a-plane position="0 0 -4" rotation="-90 0 0" width="4" height="4" color="#7BC8A4"></a-plane>
       <a-sky color="#ECECEC"></a-sky>
-
-      <!-- カメラ -->
-      <a-camera></a-camera>
     </a-scene>
   </body>
 </html>
