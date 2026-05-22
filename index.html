@@ -2,46 +2,42 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Web MR Pass-through (iPhone)</title>
+    <title>Web MR "Hack" Pass-through</title>
+    
     <!-- 1. WebXRポリフィル（iOSで画面を割るために追加） -->
     <script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@latest/build/webxr-polyfill.js"></script>
     <script>
       var polyfill = new WebXRPolyfill();
     </script>
-    <!-- 2. A-Frame本体 -->
+    
+    <!-- 2. A-Frame本体（ポストプロセッシングのために少し前の安定版1.4.2を使用） -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 
+    <!-- 3. 【カスタムコンポーネント】カメラ映像取得とポストプロセッシング -->
     <script>
-      // -------------------------------------------------------------
-      // 【カスタムコンポーネント】カメラ背景システム
-      // Three.jsのscene.backgroundにカメラ映像のテクスチャを設定します。
-      // -------------------------------------------------------------
-      AFRAME.registerComponent('camera-background', {
-        init: function () {
-          var scene = this.el;
-          var video = document.getElementById('camera-stream');
-
-          // sceneがロードされるのを待ってから実行
-          if (scene.hasLoaded) {
-            this.setupVideo(scene, video);
-          } else {
-            scene.addEventListener('loaded', this.setupVideo.bind(this, scene, video));
-          }
+      AFRAME.registerComponent('stereo-pass-through', {
+        schema: {
+          offset: { type: 'float', default: 0.03 } // 視差のオフセット量（0.0〜0.1程度で調整）
         },
 
-        setupVideo: function (scene, video) {
-          // Three.jsのテクスチャとしてビデオを扱う
-          var texture = new THREE.VideoTexture(video);
-          
-          // A-Frame（Three.js）のシーンの背景として、カメラテクスチャを設定
-          scene.object3D.background = texture;
+        init: function () {
+          var scene = this.el.sceneEl;
+          var video = document.getElementById('camera-stream');
 
-          // 背面カメラを取得
+          // Three.jsのテクスチャとしてビデオを扱う
+          this.videoTexture = new THREE.VideoTexture(video);
+
+          // ポストプロセッシングのセットアップは、sceneがloadedになってから
+          if (scene.hasLoaded) {
+            this.setupPostProcessing();
+          } else {
+            scene.addEventListener('loaded', this.setupPostProcessing.bind(this));
+          }
+
+          // 背面カメラを取得してビデオタグに流し込む
           navigator.mediaDevices.getUserMedia({ 
-            video: { 
-              facingMode: "environment" // 背面カメラを指定
-            }, 
-            audio: false // 音声は不要
+            video: { facingMode: "environment" }, 
+            audio: false 
           })
           .then(function(stream) {
             video.srcObject = stream;
@@ -49,11 +45,120 @@
           })
           .catch(function(err) {
             console.error("カメラの取得に失敗しました:", err);
-            // エラー表示（開発時のデバッグ用）
             alert("カメラを起動できませんでした。HTTPS環境で実行しているか確認してください。");
           });
+        },
+
+        // -------------------------------------------------------------
+        // Three.jsのEffectComposerを使い、カスタムシェーダーを適用する
+        // -------------------------------------------------------------
+        setupPostProcessing: function () {
+          var scene = this.el.sceneEl;
+          var renderer = scene.renderer;
+
+          // EffectComposerをThree.jsから直接作成
+          this.composer = new THREE.EffectComposer(renderer);
+
+          // 1. 通常のシーンレンダリングパスを追加
+          var renderPass = new THREE.RenderPass(scene.object3D, scene.camera);
+          this.composer.addPass(renderPass);
+
+          // 2. カスタムシェーダーパスを追加
+          var myEffect = {
+            uniforms: {
+              "tDiffuse": { value: null }, // EffectComposerからの入力テクスチャ（カメラ映像）
+              "offset": { value: this.data.offset }, // 視差のオフセット量
+              "isLeftEye": { value: 1.0 } // 初期値は左目
+            },
+            vertexShader: `
+              varying vec2 vUv;
+              void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+              }
+            `,
+            // 下部にある<script id="fragment-shader">から読み込む
+            fragmentShader: document.getElementById('fragment-shader').textContent
+          };
+          this.shaderPass = new THREE.ShaderPass(myEffect);
+          this.composer.addPass(this.shaderPass);
+
+          // scene.backgroundを無効化（ポストプロセッシング対象外になるため）
+          scene.object3D.background = null;
+        },
+
+        // -------------------------------------------------------------
+        // 毎フレームのレンダリングサイクル
+        // -------------------------------------------------------------
+        tick: function (time, timeDelta) {
+          if (!this.composer) return;
+
+          var scene = this.el.sceneEl;
+          var renderer = scene.renderer;
+
+          // Three.jsのVRレンダラーから、現在の目の状態を取得
+          var xr = renderer.xr;
+          var camera = scene.camera;
+
+          // VRモード（画面分割）の時だけカスタムレンダリング
+          if (xr.enabled && xr.isPresenting) {
+            // Three.jsのポストプロセッシングは、デフォルトのVRレンダリングと競合するため、
+            // 自分で EffectComposer.render() を呼び出す必要がある。
+            // また、EffectComposerは「左目用」「右目用」のパスを別々に管理する必要がある。
+
+            // A-FrameではVRモード時、EffectComposerは自動で左右それぞれのパスをレンダリングする。
+            // カスタムシェーダー内部で「左目」「右目」を判定できるようにuniformsを更新する。
+
+            // scene.renderer.xr.getEye() は1.4.2時点では、
+            // 'left' か 'right' の文字列を返す（Three.jsのVRレンダラーの仕様による）。
+            var eye = xr.getEye();
+
+            // シェーダーに現在の目がどちらかを伝える
+            if (eye === 'left') {
+              this.shaderPass.uniforms.isLeftEye.value = 1.0;
+            } else if (eye === 'right') {
+              this.shaderPass.uniforms.isLeftEye.value = 0.0;
+            }
+
+            // EffectComposerでレンダリング
+            // A-FrameのEffectComposerはVR時に自動でステレオレンダリングを処理してくれる
+            this.composer.render();
+
+          }
         }
       });
+    </script>
+
+    <!-- 4. カスタムフラグメントシェーダー (GLSL) -->
+    <script id="fragment-shader" type="x-shader/x-fragment">
+      uniform sampler2D tDiffuse; // EffectComposerからの入力テクスチャ（カメラ映像）
+      uniform float offset;      // 視差のオフセット量
+      uniform float isLeftEye;   // 左目なら1.0、右目なら0.0
+
+      varying vec2 vUv; // 頂点シェーダーから渡される、画面全体のUV座標
+
+      void main() {
+        vec2 uv = vUv; // 現在のピクセルのUV座標を取得
+
+        // ★ハックの核心★
+        // 現在描画している目が「左目」か「右目」かに応じて、
+        // テクスチャをサンプリングする横座標(uv.x)をオフセットさせる。
+        // 左目ならプラス（少し右の映像を読み込む）、右目ならマイナス（少し左の映像を読み込む）に。
+        // これにより、脳は「ずれている＝奥行きがある」と錯覚する。
+        float shift = (isLeftEye > 0.5) ? offset : -offset;
+        uv.x += shift;
+
+        // オフセットさせた座標でテクスチャ（カメラ映像）をサンプリング
+        vec4 color = texture2D(tDiffuse, uv);
+
+        // 画面の端（uv.xが0未満、または1以上になった場所）を黒くする（任意）
+        if(uv.x < 0.0 || uv.x > 1.0) {
+          color = vec4(0.0, 0.0, 0.0, 1.0);
+        }
+
+        // 最終的な色を出力
+        gl_FragColor = color;
+      }
     </script>
   </head>
   <body>
@@ -61,15 +166,15 @@
     <video id="camera-stream" autoplay playsinline style="display:none;"></video>
 
     <!-- シーンにカスタムコンポーネントを適用 -->
-    <a-scene camera-background embedded vr-mode-ui="enabled: true">
+    <a-scene stereo-pass-through embedded vr-mode-ui="enabled: true">
       
-      <!-- 空間に浮かせるオブジェクト -->
-      <a-torus-knot position="0 1.5 -3" radius="0.5" radius-tubular="0.05" color="#FF9F43" animation="property: rotation; to: 0 360 0; loop: true; dur: 5000"></a-torus-knot>
-      <a-sphere position="1.5 1 -4" radius="0.6" color="#54A0FF"></a-sphere>
-      <a-cone position="-1.5 0.8 -3.5" radius-bottom="0.5" radius-top="0.1" height="1.5" color="#EE5253"></a-cone>
+      <!-- 空間に浮かせるオブジェクト（パススルー映像の中に現れる） -->
+      <a-torus-knot position="0 1.5 -4" radius="0.7" radius-tubular="0.08" color="#FF9F43" animation="property: rotation; to: 0 360 0; loop: true; dur: 8000"></a-torus-knot>
+      <a-sphere position="1.8 1 -5" radius="0.6" color="#54A0FF"></a-sphere>
+      <a-cone position="-1.8 0.8 -4.5" radius-bottom="0.5" radius-top="0.1" height="1.5" color="#EE5253"></a-cone>
 
       <!-- 地面（パススルーで見せるのでグリッドにする） -->
-      <a-grid position="0 0 -5" rotation="-90 0 0" width="10" height="10" color="#FFFFFF" opacity="0.5"></a-grid>
+      <a-grid position="0 0 -6" rotation="-90 0 0" width="10" height="10" color="#FFFFFF" opacity="0.3"></a-grid>
 
       <!-- カメラ -->
       <a-camera></a-camera>
