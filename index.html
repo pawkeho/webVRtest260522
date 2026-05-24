@@ -2,15 +2,23 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Web VR - Kuwahara Filter</title>
+    <title>Web VR - Kuwahara Filter Fix</title>
     <!-- WebXRポリフィル -->
     <script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@latest/build/webxr-polyfill.js"></script>
     <script>var polyfill = new WebXRPolyfill();</script>
-    <!-- A-Frame本体 -->
+    
+    <!-- 1. A-Frame本体 -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 
+    <!-- 2. 【重要】Three.jsのポストプロセス用追加ライブラリ -->
+    <!-- A-Frame 1.4.2の裏側で動いているThree.js(r147)と同じバージョンのものを読み込みます -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/shaders/CopyShader.js"></script>
+
     <script>
-      // 【カスタムコンポーネント】Kuwaharaフィルター（ポストプロセス）
+      // 【カスタムコンポーネント】Kuwaharaフィルター
       AFRAME.registerComponent('kuwahara-filter', {
         init: function () {
           var scene = this.el.sceneEl;
@@ -19,7 +27,6 @@
           } else {
             scene.addEventListener('loaded', this.setupPostProcessing.bind(this));
           }
-          window.addEventListener('resize', this.onResize.bind(this));
         },
 
         setupPostProcessing: function () {
@@ -31,7 +38,6 @@
           var renderPass = new THREE.RenderPass(scene.object3D, scene.camera);
           this.composer.addPass(renderPass);
 
-          // 画面解像度の取得
           var pixelRatio = renderer.getPixelRatio();
           var width = window.innerWidth * pixelRatio;
           var height = window.innerHeight * pixelRatio;
@@ -55,25 +61,20 @@
           this.shaderPass = new THREE.ShaderPass(myEffect);
           this.composer.addPass(this.shaderPass);
 
-          // 描画の自動更新を停止（Tickで手動レンダリングするため）
-          scene.object3D.background = new THREE.Color("#ECECEC");
-        },
+          // ★修正ポイント：A-Frameの標準描画ループを乗っ取る★
+          // tickで呼び出すとA-Frameの標準描画と競合するため、scene.renderそのものを書き換えます
+          this.originalRender = scene.render;
+          scene.render = () => {
+            if (this.composer) {
+              this.composer.render(); // フィルターを通した映像だけを描画する
+            }
+          };
 
-        onResize: function () {
-          if (!this.shaderPass) return;
-          var renderer = this.el.sceneEl.renderer;
-          var pixelRatio = renderer.getPixelRatio();
-          this.shaderPass.uniforms.resolution.value.set(
-            window.innerWidth * pixelRatio, 
-            window.innerHeight * pixelRatio
-          );
-        },
-
-        tick: function () {
-          if (this.composer) {
-            // Three.js標準のレンダリングの代わりにComposerをレンダリング
-            this.composer.render();
-          }
+          // 画面サイズ変更時の対応
+          window.addEventListener('resize', () => {
+            var pr = scene.renderer.getPixelRatio();
+            this.shaderPass.uniforms.resolution.value.set(window.innerWidth * pr, window.innerHeight * pr);
+          });
         }
       });
     </script>
@@ -84,45 +85,45 @@
       uniform vec2 resolution;
       varying vec2 vUv;
 
+      // ★修正ポイント：iOS SafariのWebGLコンパイラ対策として固定値（マクロ）を使用★
+      // ここの数値を 2〜5 の間で変えると油絵感の強さが変わります
+      #define RADIUS 4
+
       void main() {
-        // ★調整ポイント：フィルターの半径（油絵感の強さ）
-        // 大きくすると質感がよりフラットになりますが、スマホだと重くなります。3〜5が目安です。
-        const int radius = 4;
         vec2 d = 1.0 / resolution;
         
-        vec3 m[4]; // 各領域の平均色
-        vec3 s[4]; // 各領域の分散（色のばらつき）
+        vec3 m[4]; 
+        vec3 s[4]; 
         
         for (int k = 0; k < 4; ++k) {
             m[k] = vec3(0.0);
             s[k] = vec3(0.0);
         }
 
-        // 周囲を4つのブロック（領域）に分けて、それぞれの色とばらつきを計算
         // 第1象限（右下）
-        for (int j = 0; j <= radius; ++j) {
-            for (int i = 0; i <= radius; ++i) {
+        for (int j = 0; j <= RADIUS; ++j) {
+            for (int i = 0; i <= RADIUS; ++i) {
                 vec3 c = texture2D(tDiffuse, vUv + vec2(i,j) * d).rgb;
                 m[0] += c; s[0] += c * c;
             }
         }
         // 第2象限（右上）
-        for (int j = -radius; j <= 0; ++j) {
-            for (int i = 0; i <= radius; ++i) {
+        for (int j = -RADIUS; j <= 0; ++j) {
+            for (int i = 0; i <= RADIUS; ++i) {
                 vec3 c = texture2D(tDiffuse, vUv + vec2(i,j) * d).rgb;
                 m[1] += c; s[1] += c * c;
             }
         }
         // 第3象限（左上）
-        for (int j = -radius; j <= 0; ++j) {
-            for (int i = -radius; i <= 0; ++i) {
+        for (int j = -RADIUS; j <= 0; ++j) {
+            for (int i = -RADIUS; i <= 0; ++i) {
                 vec3 c = texture2D(tDiffuse, vUv + vec2(i,j) * d).rgb;
                 m[2] += c; s[2] += c * c;
             }
         }
         // 第4象限（左下）
-        for (int j = 0; j <= radius; ++j) {
-            for (int i = -radius; i <= 0; ++i) {
+        for (int j = 0; j <= RADIUS; ++j) {
+            for (int i = -RADIUS; i <= 0; ++i) {
                 vec3 c = texture2D(tDiffuse, vUv + vec2(i,j) * d).rgb;
                 m[3] += c; s[3] += c * c;
             }
@@ -130,9 +131,8 @@
 
         float min_sigma2 = 1e+2;
         vec3 result = vec3(0.0);
-        float n = float((radius + 1) * (radius + 1)); // 1領域あたりのピクセル数
+        float n = float((RADIUS + 1) * (RADIUS + 1)); 
 
-        // 最も「色が平坦（ばらつきが少ない）」な領域の色を採用する
         for (int k = 0; k < 4; ++k) {
             m[k] /= n;
             s[k] = abs(s[k] / n - m[k] * m[k]);
@@ -149,9 +149,10 @@
     </script>
   </head>
   <body>
-    <!-- シーンに kuwahara-filter コンポーネントを適用 -->
     <a-scene kuwahara-filter>
-      <!-- コントラストの強い色の方がフィルター効果がわかりやすいため配置 -->
+      <!-- 空の色を少し明るくしてコントラストを出す -->
+      <a-sky color="#F0F0F0"></a-sky>
+
       <a-box position="-1 0.5 -3" rotation="0 45 0" color="#4CC3D9"></a-box>
       <a-sphere position="0 1.25 -5" radius="1.25" color="#EF2D5E"></a-sphere>
       <a-cylinder position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D"></a-cylinder>
@@ -159,7 +160,8 @@
       <!-- 地面を市松模様にしてフィルターのかかり具合を確認しやすくする -->
       <a-plane position="0 0 -4" rotation="-90 0 0" width="10" height="10" color="#7BC8A4" material="src: url(https://upload.wikimedia.org/wikipedia/commons/a/a4/Checkerboard_pattern.svg); repeat: 10 10;"></a-plane>
       
-      <a-camera position="0 1.6 0"></a-camera>
+      <!-- カスタムの描画ループにカメラ情報を渡すため、IDを付与 -->
+      <a-camera id="camera" position="0 1.6 0"></a-camera>
     </a-scene>
   </body>
 </html>
