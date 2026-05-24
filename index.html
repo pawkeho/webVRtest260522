@@ -2,23 +2,164 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Web VR for iPhone</title>
-    <!-- 1. WebXRポリフィル（これがiOSで画面を割るための魔法です） -->
+    <title>Web VR - Kuwahara Filter</title>
+    <!-- WebXRポリフィル -->
     <script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@latest/build/webxr-polyfill.js"></script>
-    <script>
-      // A-Frameより先にポリフィルを有効化
-      var polyfill = new WebXRPolyfill();
-    </script>
-    <!-- 2. A-Frame本体 -->
+    <script>var polyfill = new WebXRPolyfill();</script>
+    <!-- A-Frame本体 -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+
+    <script>
+      // 【カスタムコンポーネント】Kuwaharaフィルター（ポストプロセス）
+      AFRAME.registerComponent('kuwahara-filter', {
+        init: function () {
+          var scene = this.el.sceneEl;
+          if (scene.hasLoaded) {
+            this.setupPostProcessing();
+          } else {
+            scene.addEventListener('loaded', this.setupPostProcessing.bind(this));
+          }
+          window.addEventListener('resize', this.onResize.bind(this));
+        },
+
+        setupPostProcessing: function () {
+          var scene = this.el.sceneEl;
+          var renderer = scene.renderer;
+          
+          // EffectComposerの準備
+          this.composer = new THREE.EffectComposer(renderer);
+          var renderPass = new THREE.RenderPass(scene.object3D, scene.camera);
+          this.composer.addPass(renderPass);
+
+          // 画面解像度の取得
+          var pixelRatio = renderer.getPixelRatio();
+          var width = window.innerWidth * pixelRatio;
+          var height = window.innerHeight * pixelRatio;
+
+          // Kuwaharaシェーダーパスの追加
+          var myEffect = {
+            uniforms: {
+              "tDiffuse": { value: null },
+              "resolution": { value: new THREE.Vector2(width, height) }
+            },
+            vertexShader: `
+              varying vec2 vUv;
+              void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              }
+            `,
+            fragmentShader: document.getElementById('kuwahara-shader').textContent
+          };
+
+          this.shaderPass = new THREE.ShaderPass(myEffect);
+          this.composer.addPass(this.shaderPass);
+
+          // 描画の自動更新を停止（Tickで手動レンダリングするため）
+          scene.object3D.background = new THREE.Color("#ECECEC");
+        },
+
+        onResize: function () {
+          if (!this.shaderPass) return;
+          var renderer = this.el.sceneEl.renderer;
+          var pixelRatio = renderer.getPixelRatio();
+          this.shaderPass.uniforms.resolution.value.set(
+            window.innerWidth * pixelRatio, 
+            window.innerHeight * pixelRatio
+          );
+        },
+
+        tick: function () {
+          if (this.composer) {
+            // Three.js標準のレンダリングの代わりにComposerをレンダリング
+            this.composer.render();
+          }
+        }
+      });
+    </script>
+
+    <!-- 【GLSL】Kuwaharaフィルターのフラグメントシェーダー -->
+    <script id="kuwahara-shader" type="x-shader/x-fragment">
+      uniform sampler2D tDiffuse;
+      uniform vec2 resolution;
+      varying vec2 vUv;
+
+      void main() {
+        // ★調整ポイント：フィルターの半径（油絵感の強さ）
+        // 大きくすると質感がよりフラットになりますが、スマホだと重くなります。3〜5が目安です。
+        const int radius = 4;
+        vec2 d = 1.0 / resolution;
+        
+        vec3 m[4]; // 各領域の平均色
+        vec3 s[4]; // 各領域の分散（色のばらつき）
+        
+        for (int k = 0; k < 4; ++k) {
+            m[k] = vec3(0.0);
+            s[k] = vec3(0.0);
+        }
+
+        // 周囲を4つのブロック（領域）に分けて、それぞれの色とばらつきを計算
+        // 第1象限（右下）
+        for (int j = 0; j <= radius; ++j) {
+            for (int i = 0; i <= radius; ++i) {
+                vec3 c = texture2D(tDiffuse, vUv + vec2(i,j) * d).rgb;
+                m[0] += c; s[0] += c * c;
+            }
+        }
+        // 第2象限（右上）
+        for (int j = -radius; j <= 0; ++j) {
+            for (int i = 0; i <= radius; ++i) {
+                vec3 c = texture2D(tDiffuse, vUv + vec2(i,j) * d).rgb;
+                m[1] += c; s[1] += c * c;
+            }
+        }
+        // 第3象限（左上）
+        for (int j = -radius; j <= 0; ++j) {
+            for (int i = -radius; i <= 0; ++i) {
+                vec3 c = texture2D(tDiffuse, vUv + vec2(i,j) * d).rgb;
+                m[2] += c; s[2] += c * c;
+            }
+        }
+        // 第4象限（左下）
+        for (int j = 0; j <= radius; ++j) {
+            for (int i = -radius; i <= 0; ++i) {
+                vec3 c = texture2D(tDiffuse, vUv + vec2(i,j) * d).rgb;
+                m[3] += c; s[3] += c * c;
+            }
+        }
+
+        float min_sigma2 = 1e+2;
+        vec3 result = vec3(0.0);
+        float n = float((radius + 1) * (radius + 1)); // 1領域あたりのピクセル数
+
+        // 最も「色が平坦（ばらつきが少ない）」な領域の色を採用する
+        for (int k = 0; k < 4; ++k) {
+            m[k] /= n;
+            s[k] = abs(s[k] / n - m[k] * m[k]);
+            
+            float sigma2 = s[k].r + s[k].g + s[k].b;
+            if (sigma2 < min_sigma2) {
+                min_sigma2 = sigma2;
+                result = m[k];
+            }
+        }
+
+        gl_FragColor = vec4(result, 1.0);
+      }
+    </script>
   </head>
   <body>
-    <a-scene>
+    <!-- シーンに kuwahara-filter コンポーネントを適用 -->
+    <a-scene kuwahara-filter>
+      <!-- コントラストの強い色の方がフィルター効果がわかりやすいため配置 -->
       <a-box position="-1 0.5 -3" rotation="0 45 0" color="#4CC3D9"></a-box>
       <a-sphere position="0 1.25 -5" radius="1.25" color="#EF2D5E"></a-sphere>
       <a-cylinder position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D"></a-cylinder>
-      <a-plane position="0 0 -4" rotation="-90 0 0" width="4" height="4" color="#7BC8A4"></a-plane>
-      <a-sky color="#ECECEC"></a-sky>
+      
+      <!-- 地面を市松模様にしてフィルターのかかり具合を確認しやすくする -->
+      <a-plane position="0 0 -4" rotation="-90 0 0" width="10" height="10" color="#7BC8A4" material="src: url(https://upload.wikimedia.org/wikipedia/commons/a/a4/Checkerboard_pattern.svg); repeat: 10 10;"></a-plane>
+      
+      <a-camera position="0 1.6 0"></a-camera>
     </a-scene>
   </body>
 </html>
