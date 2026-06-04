@@ -1,167 +1,548 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Web VR - Kuwahara Filter Fix</title>
-    <!-- WebXRポリフィル -->
-    <script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@latest/build/webxr-polyfill.js"></script>
-    <script>var polyfill = new WebXRPolyfill();</script>
-    
-    <!-- 1. A-Frame本体 -->
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>立体記録事業 in 栗山町</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <!-- 2. 【重要】Three.jsのポストプロセス用追加ライブラリ -->
-    <!-- A-Frame 1.4.2の裏側で動いているThree.js(r147)と同じバージョンのものを読み込みます -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/EffectComposer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/ShaderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/shaders/CopyShader.js"></script>
+  :root {
+    --bg: #f5f5f3;
+    --white: #ffffff;
+    --gray1: #e8e8e6;
+    --gray2: #aaaaaa;
+    --gray3: #555555;
+    --black: #1a1a1a;
+    --yellow: #f5c400;
+  }
 
-    <script>
-      // 【カスタムコンポーネント】Kuwaharaフィルター
-      AFRAME.registerComponent('kuwahara-filter', {
-        init: function () {
-          var scene = this.el.sceneEl;
-          if (scene.hasLoaded) {
-            this.setupPostProcessing();
-          } else {
-            scene.addEventListener('loaded', this.setupPostProcessing.bind(this));
-          }
-        },
+  body {
+    background: var(--bg);
+    color: var(--black);
+    font-family: 'Noto Sans JP', sans-serif;
+    line-height: 1.7;
+  }
 
-        setupPostProcessing: function () {
-          var scene = this.el.sceneEl;
-          var renderer = scene.renderer;
-          
-          // EffectComposerの準備
-          this.composer = new THREE.EffectComposer(renderer);
-          var renderPass = new THREE.RenderPass(scene.object3D, scene.camera);
-          this.composer.addPass(renderPass);
+  /* NAV */
+  header {
+    background: var(--white);
+    border-bottom: 2px solid var(--yellow);
+    padding: 1.2rem 2rem;
+  }
 
-          var pixelRatio = renderer.getPixelRatio();
-          var width = window.innerWidth * pixelRatio;
-          var height = window.innerHeight * pixelRatio;
+  header h1 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--black);
+    letter-spacing: 0.05em;
+  }
 
-          // Kuwaharaシェーダーパスの追加
-          var myEffect = {
-            uniforms: {
-              "tDiffuse": { value: null },
-              "resolution": { value: new THREE.Vector2(width, height) }
-            },
-            vertexShader: `
-              varying vec2 vUv;
-              void main() {
-                vUv = uv;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-              }
-            `,
-            fragmentShader: document.getElementById('kuwahara-shader').textContent
-          };
+  header p {
+    font-size: 0.75rem;
+    color: var(--gray2);
+    margin-top: 0.2rem;
+  }
 
-          this.shaderPass = new THREE.ShaderPass(myEffect);
-          this.composer.addPass(this.shaderPass);
+  /* HERO */
+  .hero {
+    background: var(--black);
+    color: var(--white);
+    padding: 4rem 2rem;
+    text-align: center;
+  }
 
-          // ★修正ポイント：A-Frameの標準描画ループを乗っ取る★
-          // tickで呼び出すとA-Frameの標準描画と競合するため、scene.renderそのものを書き換えます
-          this.originalRender = scene.render;
-          scene.render = () => {
-            if (this.composer) {
-              this.composer.render(); // フィルターを通した映像だけを描画する
-            }
-          };
+  .hero-label {
+    display: inline-block;
+    background: var(--yellow);
+    color: var(--black);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    padding: 0.3rem 0.8rem;
+    margin-bottom: 1.5rem;
+  }
 
-          // 画面サイズ変更時の対応
-          window.addEventListener('resize', () => {
-            var pr = scene.renderer.getPixelRatio();
-            this.shaderPass.uniforms.resolution.value.set(window.innerWidth * pr, window.innerHeight * pr);
-          });
-        }
-      });
-    </script>
+  .hero h2 {
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 700;
+    line-height: 1.4;
+    margin-bottom: 1rem;
+  }
 
-    <!-- 【GLSL】Kuwaharaフィルターのフラグメントシェーダー -->
-    <script id="kuwahara-shader" type="x-shader/x-fragment">
-      uniform sampler2D tDiffuse;
-      uniform vec2 resolution;
-      varying vec2 vUv;
+  .hero p {
+    font-size: 0.9rem;
+    color: var(--gray2);
+    max-width: 520px;
+    margin: 0 auto;
+  }
 
-      // ★修正ポイント：iOS SafariのWebGLコンパイラ対策として固定値（マクロ）を使用★
-      // ここの数値を 2〜5 の間で変えると油絵感の強さが変わります
-      #define RADIUS 4
+  /* MAIN CONTENT */
+  main {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 3rem 2rem 5rem;
+  }
 
-      void main() {
-        vec2 d = 1.0 / resolution;
-        
-        vec3 m[4]; 
-        vec3 s[4]; 
-        
-        for (int k = 0; k < 4; ++k) {
-            m[k] = vec3(0.0);
-            s[k] = vec3(0.0);
-        }
+  /* STEP CARDS */
+  .step {
+    background: var(--white);
+    border: 1px solid var(--gray1);
+    margin-bottom: 2.5rem;
+  }
 
-        // 第1象限（右下）
-        for (int j = 0; j <= RADIUS; ++j) {
-            for (int i = 0; i <= RADIUS; ++i) {
-                vec3 c = texture2D(tDiffuse, vUv + vec2(i,j) * d).rgb;
-                m[0] += c; s[0] += c * c;
-            }
-        }
-        // 第2象限（右上）
-        for (int j = -RADIUS; j <= 0; ++j) {
-            for (int i = 0; i <= RADIUS; ++i) {
-                vec3 c = texture2D(tDiffuse, vUv + vec2(i,j) * d).rgb;
-                m[1] += c; s[1] += c * c;
-            }
-        }
-        // 第3象限（左上）
-        for (int j = -RADIUS; j <= 0; ++j) {
-            for (int i = -RADIUS; i <= 0; ++i) {
-                vec3 c = texture2D(tDiffuse, vUv + vec2(i,j) * d).rgb;
-                m[2] += c; s[2] += c * c;
-            }
-        }
-        // 第4象限（左下）
-        for (int j = 0; j <= RADIUS; ++j) {
-            for (int i = -RADIUS; i <= 0; ++i) {
-                vec3 c = texture2D(tDiffuse, vUv + vec2(i,j) * d).rgb;
-                m[3] += c; s[3] += c * c;
-            }
-        }
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--gray1);
+  }
 
-        float min_sigma2 = 1e+2;
-        vec3 result = vec3(0.0);
-        float n = float((RADIUS + 1) * (RADIUS + 1)); 
+  .step-num {
+    background: var(--yellow);
+    color: var(--black);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 0.2rem 0.6rem;
+    flex-shrink: 0;
+  }
 
-        for (int k = 0; k < 4; ++k) {
-            m[k] /= n;
-            s[k] = abs(s[k] / n - m[k] * m[k]);
-            
-            float sigma2 = s[k].r + s[k].g + s[k].b;
-            if (sigma2 < min_sigma2) {
-                min_sigma2 = sigma2;
-                result = m[k];
-            }
-        }
+  .step-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
 
-        gl_FragColor = vec4(result, 1.0);
+  /* IMAGE PLACEHOLDER */
+  .img-area {
+    background: var(--gray1);
+    aspect-ratio: 16/9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.2s;
+  }
+
+  .img-area:hover { background: #ddddd9; }
+
+  .img-area input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .img-area svg { color: var(--gray2); }
+
+  .img-area span {
+    font-size: 0.78rem;
+    color: var(--gray2);
+    pointer-events: none;
+  }
+
+  .img-area img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .step-body {
+    padding: 1.25rem 1.5rem;
+  }
+
+  .step-body p {
+    font-size: 0.88rem;
+    color: var(--gray3);
+    margin-bottom: 0.75rem;
+  }
+
+  .step-body p:last-child { margin-bottom: 0; }
+
+  .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+  }
+
+  .tag {
+    background: var(--bg);
+    border: 1px solid var(--gray1);
+    font-size: 0.72rem;
+    color: var(--gray3);
+    padding: 0.2rem 0.6rem;
+  }
+
+  /* DIVIDER */
+  .arrow-divider {
+    text-align: center;
+    margin: -0.5rem 0 0.5rem;
+    color: var(--yellow);
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+
+  /* 3D VIEWER */
+  .viewer-section {
+    background: var(--white);
+    border: 1px solid var(--gray1);
+    margin-top: 3rem;
+  }
+
+  .viewer-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--gray1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .viewer-header h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+
+  .viewer-hint {
+    font-size: 0.72rem;
+    color: var(--gray2);
+  }
+
+  #viewer-wrap {
+    aspect-ratio: 16/9;
+    background: #222;
+    position: relative;
+  }
+
+  #viewer-canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+
+  .viewer-upload-btn {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    background: var(--yellow);
+    color: var(--black);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.4rem 0.9rem;
+    border: none;
+    cursor: pointer;
+    z-index: 10;
+    letter-spacing: 0.05em;
+  }
+
+  .viewer-upload-btn:hover { background: #e0b200; }
+
+  #model-file-input { display: none; }
+
+  .viewer-note {
+    padding: 0.9rem 1.5rem;
+    font-size: 0.78rem;
+    color: var(--gray2);
+    border-top: 1px solid var(--gray1);
+  }
+
+  /* FOOTER */
+  footer {
+    background: var(--black);
+    color: var(--gray2);
+    text-align: center;
+    font-size: 0.75rem;
+    padding: 2rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>立体記録事業 in 栗山町</h1>
+  <p>デジタルファブリケーション活用による地域資産の記録・活用・持続管理</p>
+</header>
+
+<div class="hero">
+  <div class="hero-label">PROJECT OVERVIEW</div>
+  <h2>3Dスキャン技術で地域の記録を残し、<br>グッズ展開で持続可能な管理へ。</h2>
+  <p>栗山町における立体記録事業の取り組みをご紹介します。</p>
+</div>
+
+<main>
+
+  <!-- STEP 1 -->
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">STEP 1</span>
+      <span class="step-title">3Dスキャナーを活用した立体データの取得</span>
+    </div>
+    <div class="img-area" id="img-area-1">
+      <input type="file" accept="image/*" onchange="previewImage(this, 'img-area-1')">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="2" y="8" width="28" height="20" rx="2"/>
+        <circle cx="16" cy="18" r="6"/>
+        <path d="M10 4h12"/>
+      </svg>
+      <span>クリックして画像を追加</span>
+    </div>
+    <div class="step-body">
+      <p>EinScan Pro HD や iPhone の LiDAR センサーを用いて、地域の文化財・建造物・自然物などを高精度に3Dスキャンします。</p>
+      <p>取得したデータはデジタルアーカイブとして保存し、活用・閲覧・再利用が可能な形で管理します。</p>
+      <div class="tag-list">
+        <span class="tag">EinScan Pro HD</span>
+        <span class="tag">iPhone LiDAR</span>
+        <span class="tag">3Dスキャン</span>
+        <span class="tag">デジタルアーカイブ</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-divider">↓</div>
+
+  <!-- STEP 2 -->
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">STEP 2</span>
+      <span class="step-title">グッズ展開により収益獲得・認知拡大を図る</span>
+    </div>
+    <div class="img-area" id="img-area-2">
+      <input type="file" accept="image/*" onchange="previewImage(this, 'img-area-2')">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="2" y="8" width="28" height="20" rx="2"/>
+        <circle cx="16" cy="18" r="6"/>
+        <path d="M10 4h12"/>
+      </svg>
+      <span>クリックして画像を追加</span>
+    </div>
+    <div class="step-body">
+      <p>スキャンデータを活用し、レーザー加工機・UVプリンターで地域オリジナルグッズを制作。販売による収益獲得と、地域の認知拡大を同時に目指します。</p>
+      <p>アクリルキーホルダー・レーザー彫刻品・UVプリントグッズなど、様々な形での展開が可能です。</p>
+      <div class="tag-list">
+        <span class="tag">レーザー加工機</span>
+        <span class="tag">UVプリンター</span>
+        <span class="tag">グッズ制作</span>
+        <span class="tag">収益化</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-divider">↓</div>
+
+  <!-- STEP 3 -->
+  <div class="step">
+    <div class="step-header">
+      <span class="step-num">STEP 3</span>
+      <span class="step-title">収益を維持管理費に充て、持続可能な体制を目指す</span>
+    </div>
+    <div class="img-area" id="img-area-3">
+      <input type="file" accept="image/*" onchange="previewImage(this, 'img-area-3')">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="2" y="8" width="28" height="20" rx="2"/>
+        <circle cx="16" cy="18" r="6"/>
+        <path d="M10 4h12"/>
+      </svg>
+      <span>クリックして画像を追加</span>
+    </div>
+    <div class="step-body">
+      <p>グッズ販売で得た収益を、スキャンデータの維持・更新・管理費用に充てます。外部補助金に依存しない、自走型の持続可能な管理体制の構築を目指します。</p>
+      <p>記録データを地域の財産として長期的に守り続けるための循環モデルです。</p>
+      <div class="tag-list">
+        <span class="tag">持続可能</span>
+        <span class="tag">自走型運営</span>
+        <span class="tag">維持管理</span>
+        <span class="tag">地域資産</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3D VIEWER -->
+  <div class="viewer-section">
+    <div class="viewer-header">
+      <h3>3D データ ビューワー</h3>
+      <span class="viewer-hint">ドラッグで回転 / スクロールでズーム</span>
+    </div>
+    <div id="viewer-wrap">
+      <canvas id="viewer-canvas"></canvas>
+      <button class="viewer-upload-btn" onclick="document.getElementById('model-file-input').click()">
+        ＋ モデルを読み込む (.obj)
+      </button>
+      <input type="file" id="model-file-input" accept=".obj,.stl" onchange="loadModelFile(this)">
+    </div>
+    <div class="viewer-note">※ .obj または .stl ファイルを読み込むと表示されます。現在はサンプルモデルを表示中。</div>
+  </div>
+
+</main>
+
+<footer>
+  © 2025 立体記録事業 in 栗山町 — デモサイト
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ── IMAGE PREVIEW ──
+function previewImage(input, areaId) {
+  const area = document.getElementById(areaId);
+  const file = input.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  let img = area.querySelector('img');
+  if (!img) { img = document.createElement('img'); area.appendChild(img); }
+  img.src = url;
+  area.querySelectorAll('svg, span').forEach(el => el.style.display = 'none');
+}
+
+// ── 3D VIEWER ──
+const canvas = document.getElementById('viewer-canvas');
+const wrap = document.getElementById('viewer-wrap');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x222222);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 16/9, 0.1, 1000);
+camera.position.set(0, 1, 4);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dl = new THREE.DirectionalLight(0xffffff, 0.8);
+dl.position.set(3, 5, 3);
+scene.add(dl);
+const dl2 = new THREE.DirectionalLight(0xf5c400, 0.3);
+dl2.position.set(-3, -2, -3);
+scene.add(dl2);
+
+const grid = new THREE.GridHelper(10, 20, 0x444444, 0x333333);
+grid.position.y = -1.5;
+scene.add(grid);
+
+// Default sample model
+let currentMesh = null;
+function addDefaultModel() {
+  const geo = new THREE.TorusKnotGeometry(0.9, 0.3, 100, 20);
+  const mat = new THREE.MeshPhongMaterial({ color: 0xcccccc, specular: 0xf5c400, shininess: 60 });
+  currentMesh = new THREE.Mesh(geo, mat);
+  scene.add(currentMesh);
+}
+addDefaultModel();
+
+// Drag rotation
+let isDrag = false, px = 0, py = 0, ry = 0, rx = 0;
+canvas.addEventListener('mousedown', e => { isDrag = true; px = e.clientX; py = e.clientY; });
+window.addEventListener('mousemove', e => {
+  if (!isDrag) return;
+  ry += (e.clientX - px) * 0.012; rx += (e.clientY - py) * 0.012;
+  px = e.clientX; py = e.clientY;
+});
+window.addEventListener('mouseup', () => isDrag = false);
+canvas.addEventListener('touchstart', e => { isDrag = true; px = e.touches[0].clientX; py = e.touches[0].clientY; });
+canvas.addEventListener('touchmove', e => {
+  if (!isDrag) return;
+  ry += (e.touches[0].clientX - px) * 0.012; rx += (e.touches[0].clientY - py) * 0.012;
+  px = e.touches[0].clientX; py = e.touches[0].clientY;
+  e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchend', () => isDrag = false);
+canvas.addEventListener('wheel', e => {
+  camera.position.z = Math.max(1.5, Math.min(12, camera.position.z + e.deltaY * 0.005));
+});
+
+function resize() {
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+
+let autoRot = 0;
+(function loop() {
+  requestAnimationFrame(loop);
+  if (!isDrag) autoRot += 0.004;
+  if (currentMesh) { currentMesh.rotation.y = ry + autoRot; currentMesh.rotation.x = rx; }
+  renderer.render(scene, camera);
+})();
+
+resize();
+window.addEventListener('resize', resize);
+
+// Load OBJ file
+function loadModelFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    if (file.name.endsWith('.obj')) {
+      parseOBJ(text);
+    } else if (file.name.endsWith('.stl')) {
+      parseSTLText(text);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function replaceModel(geo) {
+  if (currentMesh) scene.remove(currentMesh);
+  geo.computeBoundingBox();
+  const center = new THREE.Vector3();
+  geo.boundingBox.getCenter(center);
+  geo.translate(-center.x, -center.y, -center.z);
+  const size = new THREE.Vector3();
+  geo.boundingBox.getSize(size);
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const scale = 2.5 / maxDim;
+  geo.scale(scale, scale, scale);
+  const mat = new THREE.MeshPhongMaterial({ color: 0xcccccc, specular: 0xf5c400, shininess: 60 });
+  currentMesh = new THREE.Mesh(geo, mat);
+  scene.add(currentMesh);
+  ry = 0; rx = 0; autoRot = 0;
+}
+
+function parseOBJ(text) {
+  const positions = [], normals = [], uvs = [], verts = [];
+  text.split('\n').forEach(line => {
+    const p = line.trim().split(/\s+/);
+    if (p[0] === 'v') positions.push(+p[1], +p[2], +p[3]);
+    else if (p[0] === 'vn') normals.push(+p[1], +p[2], +p[3]);
+    else if (p[0] === 'f') {
+      const face = p.slice(1).map(s => { const a = s.split('/'); return { v: +a[0]-1 }; });
+      for (let i = 1; i < face.length - 1; i++) {
+        [face[0], face[i], face[i+1]].forEach(f => {
+          verts.push(positions[f.v*3], positions[f.v*3+1], positions[f.v*3+2]);
+        });
       }
-    </script>
-  </head>
-  <body>
-    <a-scene kuwahara-filter>
-      <!-- 空の色を少し明るくしてコントラストを出す -->
-      <a-sky color="#F0F0F0"></a-sky>
+    }
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geo.computeVertexNormals();
+  replaceModel(geo);
+}
 
-      <a-box position="-1 0.5 -3" rotation="0 45 0" color="#4CC3D9"></a-box>
-      <a-sphere position="0 1.25 -5" radius="1.25" color="#EF2D5E"></a-sphere>
-      <a-cylinder position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D"></a-cylinder>
-      
-      <!-- 地面を市松模様にしてフィルターのかかり具合を確認しやすくする -->
-      <a-plane position="0 0 -4" rotation="-90 0 0" width="10" height="10" color="#7BC8A4" material="src: url(https://upload.wikimedia.org/wikipedia/commons/a/a4/Checkerboard_pattern.svg); repeat: 10 10;"></a-plane>
-      
-      <!-- カスタムの描画ループにカメラ情報を渡すため、IDを付与 -->
-      <a-camera id="camera" position="0 1.6 0"></a-camera>
-    </a-scene>
-  </body>
+function parseSTLText(text) {
+  const geo = new THREE.BufferGeometry();
+  const verts = [];
+  const re = /facet normal[\s\S]*?outer loop([\s\S]*?)endloop/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const vs = m[1].trim().split('\n');
+    vs.forEach(v => {
+      const p = v.trim().split(/\s+/);
+      if (p[0] === 'vertex') verts.push(+p[1], +p[2], +p[3]);
+    });
+  }
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geo.computeVertexNormals();
+  replaceModel(geo);
+}
+</script>
+</body>
 </html>
