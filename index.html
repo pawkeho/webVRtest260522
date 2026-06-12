@@ -4,480 +4,335 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>立体記録事業 in 栗山町</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #f5f5f3; --white: #ffffff; --gray1: #e8e8e6;
-    --gray2: #aaaaaa; --gray3: #555555; --black: #1a1a1a; --yellow: #f5c400;
+    --bg: #8a8a8a;
+    --card: #6e6e6e;
+    --border: #7a7a7a;
+    --text: #f0f0ee;
+    --muted: #e0e0e0;
+    --black: #1a1a1a;
+    --yellow: #f5c400;
   }
-  body { background: var(--bg); color: var(--black); font-family: 'Noto Sans JP', sans-serif; line-height: 1.7; }
+  body { background: var(--bg); color: var(--text); font-family: 'M PLUS Rounded 1c', sans-serif; line-height: 1.7; }
 
-  header { background: var(--white); border-bottom: 2px solid var(--yellow); padding: 1.2rem 2rem; }
-  header h1 { font-size: 1rem; font-weight: 700; letter-spacing: 0.05em; }
-  header p  { font-size: 0.75rem; color: var(--gray2); margin-top: 0.2rem; }
+  /* HERO */
+  .hero { background: var(--yellow); padding: 3.5rem 2rem; text-align: center; border-radius: 0 0 20px 20px; }
+  .hero h1 { font-size: clamp(1.8rem, 5vw, 2.8rem); font-weight: 700; line-height: 1.3; color: var(--black); }
+  .hero p  { font-size: 0.9rem; color: rgba(0,0,0,0.55); margin-top: 0.75rem; }
 
-  .hero { background: var(--black); color: var(--white); padding: 4rem 2rem; text-align: center; }
-  .hero-label {
-    display: inline-block; background: var(--yellow); color: var(--black);
-    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em;
-    padding: 0.3rem 0.8rem; margin-bottom: 1.5rem;
-  }
-  .hero h2 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 700; line-height: 1.4; margin-bottom: 1rem; }
-  .hero p { font-size: 0.9rem; color: var(--gray2); max-width: 520px; margin: 0 auto; }
-
+  /* MAIN */
   main { max-width: 800px; margin: 0 auto; padding: 3rem 2rem 5rem; }
 
-  .step { background: var(--white); border: 1px solid var(--gray1); margin-bottom: 2.5rem; }
-  .step-header { display: flex; align-items: center; gap: 1rem; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--gray1); }
-  .step-num { background: var(--yellow); color: var(--black); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; padding: 0.2rem 0.6rem; flex-shrink: 0; }
-  .step-title { font-size: 1.05rem; font-weight: 700; }
-
-  .img-area {
-    background: var(--gray1); aspect-ratio: 16/9;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;
-    cursor: pointer; position: relative; overflow: hidden; transition: background 0.2s;
-  }
-  .img-area:hover { background: #ddddd9; }
-  .img-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  .img-area svg { color: var(--gray2); }
-  .img-area .placeholder-text { font-size: 0.78rem; color: var(--gray2); pointer-events: none; text-align: center; padding: 0 1rem; }
-  .img-area img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-
-  .step-body { padding: 1.25rem 1.5rem; }
-  .step-body p { font-size: 0.88rem; color: var(--gray3); margin-bottom: 0.75rem; }
-  .step-body p:last-child { margin-bottom: 0; }
-  .tag-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
-  .tag { background: var(--bg); border: 1px solid var(--gray1); font-size: 0.72rem; color: var(--gray3); padding: 0.2rem 0.6rem; }
-  .arrow-divider { text-align: center; margin: -0.5rem 0 0.5rem; color: var(--yellow); font-size: 1.4rem; }
-
-  .viewer-section { background: var(--white); border: 1px solid var(--gray1); margin-top: 3rem; }
-  .viewer-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--gray1); display: flex; align-items: center; justify-content: space-between; }
-  .viewer-header h3 { font-size: 1.05rem; font-weight: 700; }
-  .viewer-hint { font-size: 0.72rem; color: var(--gray2); }
-  #viewer-wrap { aspect-ratio: 16/9; background: #222; position: relative; }
-  #viewer-canvas { width: 100% !important; height: 100% !important; display: block; }
-  .viewer-upload-btn {
-    position: absolute; bottom: 1rem; right: 1rem;
-    background: var(--yellow); color: var(--black);
-    font-size: 0.72rem; font-weight: 700; padding: 0.4rem 0.9rem;
-    border: none; cursor: pointer; z-index: 10; letter-spacing: 0.05em;
-  }
-  .viewer-upload-btn:hover { background: #e0b200; }
-  #model-file-input { display: none; }
-  .viewer-note { padding: 0.9rem 1.5rem; font-size: 0.78rem; color: var(--gray2); border-top: 1px solid var(--gray1); }
-  .viewer-note code { background: var(--gray1); padding: 0.1rem 0.35rem; font-size: 0.76rem; }
-
-  /* ── SCROLL STORY ── */
-  #scroll-story { margin-top: 5rem; }
-
-  .story-intro {
-    background: var(--white); text-align: center;
-    padding: 3rem 2rem; border-top: 2px solid var(--yellow);
-  }
+  /* SECTION LABEL */
   .section-label {
-    display: inline-block; background: var(--yellow); color: var(--black);
-    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em;
-    padding: 0.3rem 0.8rem; margin-bottom: 1rem;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.18em;
+    color: var(--yellow); text-transform: uppercase;
+    margin-bottom: 1rem; display: block;
   }
-  .story-intro h3 { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.75rem; }
-  .story-intro p { font-size: 0.88rem; color: var(--gray3); max-width: 480px; margin: 0 auto; }
 
-  #story-sticky {
-    position: sticky; top: 0; height: 100vh;
-    background: #1a1a1a; overflow: hidden; z-index: 1;
-  }
-  #story-canvas { display: block; width: 100% !important; height: 100% !important; }
+  /* CARDS */
+  .card { background: var(--card); border: 1px solid var(--border); margin-bottom: 1.5rem; border-radius: 14px; overflow: hidden; }
+  .card-header { display: flex; align-items: center; gap: 1rem; padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--border); }
+  .card-num { background: var(--yellow); color: var(--black); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; padding: 0.2rem 0.7rem; flex-shrink: 0; border-radius: 20px; }
+  .card-title { font-size: 1rem; font-weight: 700; }
 
-  /* Panels overlap the sticky section to drive scroll height */
-  #story-panels {
-    position: relative; z-index: 2;
-    margin-top: -100vh;
-    pointer-events: none;
-  }
-  .story-panel {
-    height: 100vh;
-    display: flex; align-items: center; padding: 0 6vw;
-  }
-  .story-panel:nth-child(1) { justify-content: flex-start; }
-  .story-panel:nth-child(2) { justify-content: flex-end; }
-  .story-panel:nth-child(3) { justify-content: center; align-items: flex-end; padding-bottom: 10vh; }
+  .img-area { background: #222; aspect-ratio: 16/9; overflow: hidden; }
+  .img-area img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-  .story-card {
-    background: rgba(255,255,255,0.93);
-    border-left: 3px solid var(--yellow);
-    padding: 1.5rem 1.75rem; max-width: 320px;
-    opacity: 0; transform: translateY(20px);
-    transition: opacity 0.65s ease, transform 0.65s ease;
-    pointer-events: auto;
-  }
-  .story-card.visible { opacity: 1; transform: none; }
-  .story-card .card-num { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.15em; color: var(--yellow); margin-bottom: 0.5rem; }
-  .story-card h4 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.6rem; }
-  .story-card p  { font-size: 0.82rem; color: var(--gray3); line-height: 1.8; }
+  .card-body { padding: 1.1rem 1.5rem; }
+  .card-body p { font-size: 0.88rem; color: var(--muted); line-height: 1.8; }
+  .card-body p + p { margin-top: 0.6rem; }
 
-  footer { background: var(--black); color: var(--gray2); text-align: center; font-size: 0.75rem; padding: 2rem; margin-top: 0; }
+  /* EQUIPMENT GRID */
+  .equip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); margin-bottom: 1.5rem; border-radius: 14px; overflow: hidden; }
+  .equip-item { background: var(--card); padding: 1.1rem 1.5rem; }
+  .equip-item .equip-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .equip-item .equip-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.7; }
+  .equip-dot { display: inline-block; width: 7px; height: 7px; background: var(--yellow); margin-right: 0.5rem; vertical-align: middle; flex-shrink: 0; }
+
+  /* DIVIDER */
+  .arrow { text-align: center; color: var(--yellow); font-size: 1.3rem; margin: 0.25rem 0; }
+
+  /* SECTION SPACER */
+  .section-block { margin-top: 3rem; }
+
+  /* VIEWER */
+  .viewer-wrap { background: #ffffff; aspect-ratio: 16/9; position: relative; }
+  #viewer-canvas { width: 100% !important; height: 100% !important; display: block; }
+  #viewer-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #ffffff; color: #aaaaaa; font-size: 0.8rem; letter-spacing: 0.08em; }
+  .viewer-note { padding: 0.85rem 1.5rem; font-size: 0.75rem; color: var(--muted); border-top: 1px solid var(--border); background: var(--card); border-radius: 0 0 14px 14px; }
+  .viewer-note code { background: var(--border); padding: 0.1rem 0.35rem; font-size: 0.73rem; }
+
+  /* FOOTER */
+  footer { background: var(--black); color: var(--muted); text-align: center; font-size: 0.75rem; padding: 2rem; }
+
+  @media (max-width: 560px) {
+    .equip-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
 
-<header>
+<div class="hero">
   <h1>立体記録事業 in 栗山町</h1>
   <p>デジタルファブリケーション活用による地域資産の記録・活用・持続管理</p>
-</header>
-
-<div class="hero">
-  <div class="hero-label">PROJECT OVERVIEW</div>
-  <h2>3Dスキャン技術で地域の記録を残し、<br>グッズ展開で持続可能な管理へ。</h2>
-  <p>栗山町における立体記録事業の取り組みをご紹介します。</p>
 </div>
 
 <main>
 
-  <!-- STEP 1 -->
-  <div class="step">
-    <div class="step-header">
-      <span class="step-num">STEP 1</span>
-      <span class="step-title">3Dスキャナーを活用した立体データの取得</span>
-    </div>
-    <!-- 画像ファイル → assets/images/step1.jpg -->
-    <div class="img-area" id="img-area-1">
-      <input type="file" accept="image/*" onchange="previewImage(this,'img-area-1')">
-      <img src="assets/images/step1.jpg" onerror="this.style.display='none'" alt="">
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
-        <rect x="2" y="8" width="28" height="20" rx="2"/><circle cx="16" cy="18" r="6"/><path d="M10 4h12"/>
-      </svg>
-      <span class="placeholder-text">クリックして画像を追加<br><small>または assets/images/step1.jpg を配置</small></span>
-    </div>
-    <div class="step-body">
-      <p>EinScan Pro HD や iPhone の LiDAR センサーを用いて、地域の文化財・建造物・自然物などを高精度に3Dスキャンします。</p>
-      <p>取得したデータはデジタルアーカイブとして保存し、活用・閲覧・再利用が可能な形で管理します。</p>
-      <div class="tag-list">
-        <span class="tag">EinScan Pro HD</span><span class="tag">iPhone LiDAR</span>
-        <span class="tag">3Dスキャン</span><span class="tag">デジタルアーカイブ</span>
+  <!-- ── 使用機材 ── -->
+  <div class="section-block">
+    <span class="section-label">Equipment — 使用機材</span>
+    <div class="equip-grid">
+      <div class="equip-item">
+        <p class="equip-name"><span class="equip-dot"></span>3D スキャナー</p>
+        <p class="equip-desc">EinScan Pro HD。高精度な形状取得が可能な業務用ハンドヘルドスキャナー。</p>
+      </div>
+      <div class="equip-item">
+        <p class="equip-name"><span class="equip-dot"></span>iPhone</p>
+        <p class="equip-desc">LiDAR センサーを活用した広範囲スキャン。屋外や大型対象物に対応。</p>
+      </div>
+      <div class="equip-item">
+        <p class="equip-name"><span class="equip-dot"></span>3D プリンター</p>
+        <p class="equip-desc">Prusa / Formlabs。FDM・SLA 両方式で機能部品から精密造形まで対応。</p>
+      </div>
+      <div class="equip-item">
+        <p class="equip-name"><span class="equip-dot"></span>UV・レーザー加工機</p>
+        <p class="equip-desc">Roland LEF-12i（UV）、Trotec Speedy 300（レーザー）。グッズ制作の中核機材。</p>
       </div>
     </div>
   </div>
 
-  <div class="arrow-divider">↓</div>
+  <!-- ── STEP 1 ── -->
+  <div class="section-block">
+    <span class="section-label">Process</span>
 
-  <!-- STEP 2 -->
-  <div class="step">
-    <div class="step-header">
-      <span class="step-num">STEP 2</span>
-      <span class="step-title">グッズ展開により収益獲得・認知拡大を図る</span>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-num">STEP 1</span>
+        <span class="card-title">3Dスキャナーを活用した立体データの取得</span>
+      </div>
+      <!-- assets/images/step1.jpg -->
+      <div class="img-area">
+        <img src="assets/images/step1.jpg" alt="STEP1">
+      </div>
+      <div class="card-body">
+        <p>EinScan Pro HD や iPhone の LiDAR センサーを用いて、文化財・建造物・自然物などを高精度に3Dスキャンします。</p>
+        <p>取得したデータはデジタルアーカイブとして保存し、閲覧・計測・再利用が可能な形で管理します。</p>
+      </div>
     </div>
-    <!-- 画像ファイル → assets/images/step2.jpg -->
-    <div class="img-area" id="img-area-2">
-      <input type="file" accept="image/*" onchange="previewImage(this,'img-area-2')">
-      <img src="assets/images/step2.jpg" onerror="this.style.display='none'" alt="">
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
-        <rect x="2" y="8" width="28" height="20" rx="2"/><circle cx="16" cy="18" r="6"/><path d="M10 4h12"/>
-      </svg>
-      <span class="placeholder-text">クリックして画像を追加<br><small>または assets/images/step2.jpg を配置</small></span>
-    </div>
-    <div class="step-body">
-      <p>スキャンデータを活用し、レーザー加工機・UVプリンターで地域オリジナルグッズを制作。販売による収益獲得と、地域の認知拡大を同時に目指します。</p>
-      <p>アクリルキーホルダー・レーザー彫刻品・UVプリントグッズなど、様々な形での展開が可能です。</p>
-      <div class="tag-list">
-        <span class="tag">レーザー加工機</span><span class="tag">UVプリンター</span>
-        <span class="tag">グッズ制作</span><span class="tag">収益化</span>
+
+    <!-- 使用機材: スキャナー・iPhone -->
+    <div class="equip-grid" style="margin-bottom:0;">
+      <div class="equip-item">
+        <p class="equip-name"><span class="equip-dot"></span>3D スキャナー</p>
+        <!-- assets/images/equip_scanner.jpg -->
+        <div class="img-area" style="aspect-ratio:4/3; margin: 0.75rem 0;">
+          <img src="assets/images/equip_scanner.jpg" alt="3Dスキャナー">
+        </div>
+        <p class="equip-desc">EinScan Pro HD — 精密部品から人体まで対応。点群密度が高く、後処理も容易。</p>
+      </div>
+      <div class="equip-item">
+        <p class="equip-name"><span class="equip-dot"></span>iPhone</p>
+        <!-- assets/images/equip_iphone.jpg -->
+        <div class="img-area" style="aspect-ratio:4/3; margin: 0.75rem 0;">
+          <img src="assets/images/equip_iphone.jpg" alt="iPhone LiDAR">
+        </div>
+        <p class="equip-desc">iPhone LiDAR — 広範囲スキャンや屋外対応。機動性が高く現場での即時確認が可能。</p>
       </div>
     </div>
   </div>
 
-  <div class="arrow-divider">↓</div>
+  <div class="arrow">↓</div>
 
-  <!-- STEP 3 -->
-  <div class="step">
-    <div class="step-header">
-      <span class="step-num">STEP 3</span>
-      <span class="step-title">収益を維持管理費に充て、持続可能な体制を目指す</span>
+  <!-- ── STEP 2 ── -->
+  <div class="section-block">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-num">STEP 2</span>
+        <span class="card-title">グッズ展開により収益獲得・認知拡大を図る</span>
+      </div>
+      <!-- assets/images/step2.jpg -->
+      <div class="img-area">
+        <img src="assets/images/step2.jpg" alt="STEP2">
+      </div>
+      <div class="card-body">
+        <p>スキャンデータを活用し、3Dプリンター・レーザー加工機・UVプリンターで地域オリジナルグッズを制作。販売による収益獲得と認知拡大を同時に目指します。</p>
+      </div>
     </div>
-    <!-- 画像ファイル → assets/images/step3.jpg -->
-    <div class="img-area" id="img-area-3">
-      <input type="file" accept="image/*" onchange="previewImage(this,'img-area-3')">
-      <img src="assets/images/step3.jpg" onerror="this.style.display='none'" alt="">
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
-        <rect x="2" y="8" width="28" height="20" rx="2"/><circle cx="16" cy="18" r="6"/><path d="M10 4h12"/>
-      </svg>
-      <span class="placeholder-text">クリックして画像を追加<br><small>または assets/images/step3.jpg を配置</small></span>
-    </div>
-    <div class="step-body">
-      <p>グッズ販売で得た収益を、スキャンデータの維持・更新・管理費用に充てます。外部補助金に依存しない、自走型の持続可能な管理体制の構築を目指します。</p>
-      <p>記録データを地域の財産として長期的に守り続けるための循環モデルです。</p>
-      <div class="tag-list">
-        <span class="tag">持続可能</span><span class="tag">自走型運営</span>
-        <span class="tag">維持管理</span><span class="tag">地域資産</span>
+
+    <!-- 使用機材: プリンター・UV/レーザー -->
+    <div class="equip-grid" style="margin-bottom:0;">
+      <div class="equip-item">
+        <p class="equip-name"><span class="equip-dot"></span>3D プリンター</p>
+        <!-- assets/images/equip_printer.jpg -->
+        <div class="img-area" style="aspect-ratio:4/3; margin: 0.75rem 0;">
+          <img src="assets/images/equip_printer.jpg" alt="3Dプリンター">
+        </div>
+        <p class="equip-desc">Prusa / Formlabs — FDM・SLA 両方式。複製品や展示用モデルの出力に対応。</p>
+      </div>
+      <div class="equip-item">
+        <p class="equip-name"><span class="equip-dot"></span>UV・レーザー加工機</p>
+        <!-- assets/images/equip_laser.jpg -->
+        <div class="img-area" style="aspect-ratio:4/3; margin: 0.75rem 0;">
+          <img src="assets/images/equip_laser.jpg" alt="UV・レーザー加工機">
+        </div>
+        <p class="equip-desc">Roland LEF-12i・Trotec Speedy 300 — アクリルキーホルダー・彫刻品など多様なグッズ制作が可能。</p>
       </div>
     </div>
   </div>
 
-  <!-- 3D VIEWER -->
-  <div class="viewer-section">
-    <div class="viewer-header">
-      <h3>3D データ ビューワー</h3>
-      <span class="viewer-hint">ドラッグで回転 / スクロールでズーム</span>
+  <div class="arrow">↓</div>
+
+  <!-- ── STEP 3 ── -->
+  <div class="section-block">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-num">STEP 3</span>
+        <span class="card-title">収益を維持管理費に充て、持続可能な体制を目指す</span>
+      </div>
+      <!-- assets/images/step3.jpg -->
+      <div class="img-area">
+        <img src="assets/images/step3.jpg" alt="STEP3">
+      </div>
+      <div class="card-body">
+        <p>グッズ販売で得た収益を、スキャンデータの維持・更新・管理費用に充てます。外部補助金に依存しない自走型の体制を構築し、地域資産を長期的に守り続けることを目指します。</p>
+      </div>
     </div>
-    <div id="viewer-wrap">
-      <canvas id="viewer-canvas"></canvas>
-      <button class="viewer-upload-btn" onclick="document.getElementById('model-file-input').click()">
-        ＋ モデルを読み込む (.obj / .stl)
-      </button>
-      <!-- モデルファイル → assets/models/model.obj -->
-      <input type="file" id="model-file-input" accept=".obj,.stl" onchange="loadModelFile(this)">
+  </div>
+
+  <div class="arrow">↓</div>
+
+  <!-- ── 活用・転用 ── -->
+  <div class="section-block">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-num">PLUS</span>
+        <span class="card-title">3Dデータのさらなる活用・転用</span>
+      </div>
+      <!-- assets/images/plus.jpg -->
+      <div class="img-area">
+        <img src="assets/images/plus.jpg" alt="活用・転用">
+      </div>
+      <div class="card-body">
+        <p>蓄積した3Dデータは、グッズ制作にとどまらず幅広いサービスへ転用できます。</p>
+        <p>・<strong style="color:var(--text);">Web 公開</strong> — 観光・文化財紹介サイトへの埋め込み表示</p>
+        <p>・<strong style="color:var(--text);">AR / VR</strong> — スマートフォンや HMD を使った体験型コンテンツ</p>
+        <p>・<strong style="color:var(--text);">設計・修復支援</strong> — 精密な寸法データとして建築・修復現場で活用</p>
+        <p>・<strong style="color:var(--text);">教育・研究</strong> — 学校や大学との連携、学術資料としての提供</p>
+        <p>・<strong style="color:var(--text);">映像・CG 制作</strong> — 映像作品やプロモーションへの3Dモデル提供</p>
+        <p style="margin-top:0.8rem;">一度記録したデータは何度でも再利用できるため、初期投資に見合った長期的な価値を生み出し続けます。</p>
+      </div>
     </div>
-    <div class="viewer-note">
-      ファイルを配置する場合は <code>assets/models/model.obj</code> に入れてください。ファイルがない場合はサンプルモデルを表示。「モデルを読み込む」ボタンでその場でアップロードも可能です。
+  </div>
+
+  <!-- ── 3D ビューワー ── -->
+  <div class="section-block">
+    <span class="section-label">3D Viewer — データを触る</span>
+    <div class="card" style="overflow:hidden;">
+      <div class="viewer-wrap">
+        <canvas id="viewer-canvas"></canvas>
+        <div id="viewer-loading">読み込み中...</div>
+      </div>
+      <div class="viewer-note">
+        ドラッグで回転 / スクロールでズーム<br>
+        モデルファイル: <code>assets/models/model.glb</code>
+      </div>
     </div>
   </div>
 
 </main>
 
-
-<!-- ════════════ SCROLL STORY ════════════ -->
-<div id="scroll-story">
-
-  <div class="story-intro">
-    <span class="section-label">3D DATA</span>
-    <h3>立体データで伝える、地域の記憶。</h3>
-    <p>スクロールしながら、スキャンデータの可能性をご覧ください。</p>
-  </div>
-
-  <div id="story-sticky">
-    <canvas id="story-canvas"></canvas>
-  </div>
-
-  <div id="story-panels">
-
-    <div class="story-panel">
-      <div class="story-card" id="card-0">
-        <p class="card-num">01 — OVERVIEW</p>
-        <h4>立体データとは何か</h4>
-        <p>3Dスキャンによって取得された点群・メッシュデータは、対象物の形状を精密に記録したデジタル資産です。場所を問わず閲覧・計測・複製が可能になります。</p>
-      </div>
-    </div>
-
-    <div class="story-panel">
-      <div class="story-card" id="card-1">
-        <p class="card-num">02 — DETAIL 1</p>
-        <h4>スキャンから活用へ</h4>
-        <p>取得した立体データは、3Dプリントやレーザー加工のソースデータとして直接活用できます。文化財の複製品製作やグッズ展開への応用が可能です。</p>
-      </div>
-    </div>
-
-    <div class="story-panel">
-      <div class="story-card" id="card-2">
-        <p class="card-num">03 — DETAIL 2</p>
-        <h4>記録を未来へつなぐ</h4>
-        <p>デジタルデータとして保存された記録は、劣化・消失のリスクがなく、将来の技術でさらなる活用が見込めます。地域の記憶を次世代に継承するインフラです。</p>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-
 <footer>
   © 2025 立体記録事業 in 栗山町 — デモサイト
 </footer>
 
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 <script>
 
-/* ── SHARED PARSERS ── */
-function parseOBJText(text) {
-  const pos = [], verts = [];
-  text.split('\n').forEach(line => {
-    const p = line.trim().split(/\s+/);
-    if (p[0]==='v') pos.push(+p[1],+p[2],+p[3]);
-    else if (p[0]==='f') {
-      const face = p.slice(1).map(s=>({v:+s.split('/')[0]-1}));
-      for (let i=1;i<face.length-1;i++)
-        [face[0],face[i],face[i+1]].forEach(f=>verts.push(pos[f.v*3],pos[f.v*3+1],pos[f.v*3+2]));
+/* ── 3D VIEWER ── */
+(function () {
+  const canvas  = document.getElementById('viewer-canvas');
+  const wrap    = document.querySelector('.viewer-wrap');
+  const loading = document.getElementById('viewer-loading');
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setClearColor(0xffffff);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.physicallyCorrectLights = true;
+
+  const scene  = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 16/9, 0.01, 1000);
+  camera.position.set(0, 0, 3);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+  const dl  = new THREE.DirectionalLight(0xffffff, 1.0); dl.position.set(3, 5, 3);   scene.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xffffff, 0.4); dl2.position.set(-3,-2,-3); scene.add(dl2);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x888888, 0.5));
+
+  let model = null;
+
+  function normalizeObject(obj) {
+    const box    = new THREE.Box3().setFromObject(obj);
+    const center = box.getCenter(new THREE.Vector3());
+    const size   = box.getSize(new THREE.Vector3());
+    const scale  = 2.5 / Math.max(size.x, size.y, size.z);
+    obj.position.sub(center);
+    obj.scale.setScalar(scale);
+  }
+
+  const gltfLoader = new THREE.GLTFLoader();
+  const dracoLoader = new THREE.DRACOLoader();
+  dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+  gltfLoader.setDRACOLoader(dracoLoader);
+
+  gltfLoader.load(
+    'assets/models/model.glb',
+    gltf => {
+      model = gltf.scene;
+      normalizeObject(model);
+      scene.add(model);
+      loading.style.display = 'none';
+    },
+    null,
+    () => {
+      // Fallback sample
+      const geo = new THREE.TorusKnotGeometry(0.9, 0.3, 100, 20);
+      const mat = new THREE.MeshPhongMaterial({ color: 0x888888, specular: 0xf5c400, shininess: 60 });
+      model = new THREE.Mesh(geo, mat);
+      scene.add(model);
+      loading.style.display = 'none';
     }
-  });
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
-  geo.computeVertexNormals(); return geo;
-}
+  );
 
-function parseSTLText(text) {
-  const verts = [];
-  const re = /facet normal[\s\S]*?outer loop([\s\S]*?)endloop/g; let m;
-  while ((m=re.exec(text))!==null)
-    m[1].trim().split('\n').forEach(v=>{ const p=v.trim().split(/\s+/); if(p[0]==='vertex') verts.push(+p[1],+p[2],+p[3]); });
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
-  geo.computeVertexNormals(); return geo;
-}
+  let isDrag = false, px = 0, py = 0, ry = 0, rx = 0, autoRot = 0;
+  canvas.addEventListener('mousedown',  e => { isDrag=true; px=e.clientX; py=e.clientY; });
+  window.addEventListener('mousemove',  e => { if(!isDrag)return; ry+=(e.clientX-px)*0.012; rx+=(e.clientY-py)*0.012; px=e.clientX; py=e.clientY; });
+  window.addEventListener('mouseup',    () => isDrag=false);
+  canvas.addEventListener('touchstart', e => { isDrag=true; px=e.touches[0].clientX; py=e.touches[0].clientY; });
+  canvas.addEventListener('touchmove',  e => { if(!isDrag)return; ry+=(e.touches[0].clientX-px)*0.012; rx+=(e.touches[0].clientY-py)*0.012; px=e.touches[0].clientX; py=e.touches[0].clientY; e.preventDefault(); }, {passive:false});
+  canvas.addEventListener('touchend',   () => isDrag=false);
+  canvas.addEventListener('wheel',      e => { camera.position.z=Math.max(1.5,Math.min(12,camera.position.z+e.deltaY*0.005)); });
 
-function normalizeGeo(geo) {
-  geo.computeBoundingBox();
-  const c=new THREE.Vector3(); geo.boundingBox.getCenter(c); geo.translate(-c.x,-c.y,-c.z);
-  const s=new THREE.Vector3(); geo.boundingBox.getSize(s);
-  const k=2.5/Math.max(s.x,s.y,s.z); geo.scale(k,k,k); return geo;
-}
-
-/* ── IMAGE PREVIEW ── */
-function previewImage(input, areaId) {
-  const area = document.getElementById(areaId);
-  const file = input.files[0]; if (!file) return;
-  let img = area.querySelector('img');
-  if (!img) { img=document.createElement('img'); area.appendChild(img); }
-  img.src = URL.createObjectURL(file); img.style.display='';
-  area.querySelectorAll('svg,.placeholder-text').forEach(el=>el.style.display='none');
-}
-document.querySelectorAll('.img-area img').forEach(img=>{
-  img.addEventListener('load', ()=>{
-    img.closest('.img-area').querySelectorAll('svg,.placeholder-text').forEach(el=>el.style.display='none');
-  });
-});
-
-/* ── VIEWER ── */
-(function(){
-  const canvas=document.getElementById('viewer-canvas');
-  const wrap=document.getElementById('viewer-wrap');
-  const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
-  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  renderer.setClearColor(0x222222);
-  const scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(45,16/9,0.1,1000);
-  camera.position.set(0,1,4);
-  scene.add(new THREE.AmbientLight(0xffffff,0.6));
-  const dl=new THREE.DirectionalLight(0xffffff,0.8); dl.position.set(3,5,3); scene.add(dl);
-  const dl2=new THREE.DirectionalLight(0xf5c400,0.3); dl2.position.set(-3,-2,-3); scene.add(dl2);
-  const grid=new THREE.GridHelper(10,20,0x444444,0x333333); grid.position.y=-1.5; scene.add(grid);
-
-  let mesh=null;
-  const mkMat=()=>new THREE.MeshPhongMaterial({color:0xcccccc,specular:0xf5c400,shininess:60});
-
-  function setMesh(geo){
-    if(mesh) scene.remove(mesh);
-    mesh=new THREE.Mesh(normalizeGeo(geo),mkMat()); scene.add(mesh);
-    ry=0; rx=0; autoRot=0;
-  }
-
-  // Try loading model.obj from assets
-  fetch('assets/models/model.obj')
-    .then(r=>{ if(!r.ok) throw 0; return r.text(); })
-    .then(t=>{ setMesh(parseOBJText(t)); if(window._storySetMesh) window._storySetMesh(parseOBJText(t)); })
-    .catch(()=>{ setMesh(new THREE.TorusKnotGeometry(0.9,0.3,100,20)); });
-
-  let isDrag=false, px=0,py=0, ry=0,rx=0, autoRot=0;
-  canvas.addEventListener('mousedown',e=>{isDrag=true;px=e.clientX;py=e.clientY;});
-  window.addEventListener('mousemove',e=>{ if(!isDrag)return; ry+=(e.clientX-px)*0.012; rx+=(e.clientY-py)*0.012; px=e.clientX;py=e.clientY; });
-  window.addEventListener('mouseup',()=>isDrag=false);
-  canvas.addEventListener('touchstart',e=>{isDrag=true;px=e.touches[0].clientX;py=e.touches[0].clientY;});
-  canvas.addEventListener('touchmove',e=>{ if(!isDrag)return; ry+=(e.touches[0].clientX-px)*0.012; rx+=(e.touches[0].clientY-py)*0.012; px=e.touches[0].clientX;py=e.touches[0].clientY; e.preventDefault(); },{passive:false});
-  canvas.addEventListener('touchend',()=>isDrag=false);
-  canvas.addEventListener('wheel',e=>{ camera.position.z=Math.max(1.5,Math.min(12,camera.position.z+e.deltaY*0.005)); });
-
-  function resize(){ const w=wrap.clientWidth,h=wrap.clientHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix(); }
-  (function loop(){ requestAnimationFrame(loop); if(!isDrag)autoRot+=0.004; if(mesh){mesh.rotation.y=ry+autoRot;mesh.rotation.x=rx;} renderer.render(scene,camera); })();
-  resize(); window.addEventListener('resize',resize);
-
-  window.loadModelFile=function(input){
-    const file=input.files[0]; if(!file)return;
-    const reader=new FileReader();
-    reader.onload=e=>{
-      const geo=file.name.endsWith('.stl')?parseSTLText(e.target.result):parseOBJText(e.target.result);
-      setMesh(geo);
-      if(window._storySetMesh) window._storySetMesh(geo.clone());
-    };
-    reader.readAsText(file);
-  };
-
-  window._viewerGetGeo=()=>mesh?mesh.geometry.clone():null;
-})();
-
-
-/* ── SCROLL STORY ── */
-(function(){
-  const canvas=document.getElementById('story-canvas');
-  const sticky=document.getElementById('story-sticky');
-  const cards=[document.getElementById('card-0'),document.getElementById('card-1'),document.getElementById('card-2')];
-
-  const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
-  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  renderer.setClearColor(0x1a1a1a);
-
-  const scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(45,16/9,0.1,1000);
-  scene.add(new THREE.AmbientLight(0xffffff,0.5));
-  const dl=new THREE.DirectionalLight(0xffffff,0.7); dl.position.set(5,8,5); scene.add(dl);
-  const dl2=new THREE.DirectionalLight(0xf5c400,0.5); dl2.position.set(-5,-3,-5); scene.add(dl2);
-  const grid=new THREE.GridHelper(12,24,0x2a2a2a,0x222222); grid.position.y=-1.8; scene.add(grid);
-
-  let storyMesh=null;
-  const mat=new THREE.MeshPhongMaterial({color:0xcccccc,specular:0xf5c400,shininess:80});
-
-  function setStoryMesh(geo){
-    if(storyMesh) scene.remove(storyMesh);
-    storyMesh=new THREE.Mesh(normalizeGeo(geo),mat); scene.add(storyMesh);
-  }
-
-  // Camera orbit keyframes (theta=horizontal, phi=vertical elevation angle, radius)
-  const KF=[
-    {theta:0.4,  phi:1.1, radius:4.5},
-    {theta:2.3,  phi:0.9, radius:3.8},
-    {theta:4.0,  phi:1.3, radius:5.0},
-  ];
-
-  function lerp(a,b,t){return a+(b-a)*t;}
-  function ease(t){return t<0.5?2*t*t:-1+(4-2*t)*t;}
-
-  function resize(){
-    const w=sticky.clientWidth,h=sticky.clientHeight;
+  function resize() {
+    const w=wrap.clientWidth, h=wrap.clientHeight;
     renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();
   }
 
-  let autoAngle=0;
-
-  (function loop(){
+  (function loop() {
     requestAnimationFrame(loop);
-    autoAngle+=0.003;
-
-    // Compute scroll progress within story-panels
-    const story=document.getElementById('scroll-story');
-    const introH=document.querySelector('.story-intro').offsetHeight;
-    const panelsH=document.getElementById('story-panels').offsetHeight;
-    const storyTop=story.getBoundingClientRect().top+scrollY+introH;
-    let progress=(scrollY-storyTop)/panelsH;
-    progress=Math.max(0,Math.min(1,progress));
-
-    const seg=progress*(KF.length-1);
-    const si=Math.min(Math.floor(seg),KF.length-2);
-    const st=ease(seg-si);
-    const theta=lerp(KF[si].theta,KF[si+1].theta,st)+autoAngle;
-    const phi  =lerp(KF[si].phi,  KF[si+1].phi,  st);
-    const rad  =lerp(KF[si].radius,KF[si+1].radius,st);
-
-    camera.position.x=rad*Math.sin(phi)*Math.cos(theta);
-    camera.position.y=rad*Math.cos(phi);
-    camera.position.z=rad*Math.sin(phi)*Math.sin(theta);
-    camera.lookAt(0,0,0);
-
-    if(storyMesh) storyMesh.rotation.y+=0.002;
-    renderer.render(scene,camera);
-
-    // Card visibility — show card when its panel is roughly in view
-    const panelH=panelsH/KF.length;
-    cards.forEach((card,i)=>{
-      const panelScrollTop=storyTop+panelH*i;
-      const inView=scrollY>panelScrollTop-innerHeight*0.6 && scrollY<panelScrollTop+panelH*0.9;
-      card.classList.toggle('visible',inView);
-    });
+    if (!isDrag) autoRot += 0.004;
+    if (model) { model.rotation.y = ry+autoRot; model.rotation.x = rx; }
+    renderer.render(scene, camera);
   })();
 
-  resize(); window.addEventListener('resize',resize);
-
-  // Sync model from viewer once it's loaded
-  setTimeout(()=>{
-    const geo=window._viewerGetGeo?window._viewerGetGeo():null;
-    setStoryMesh(geo||new THREE.TorusKnotGeometry(0.9,0.3,100,20));
-  },1600);
-
-  window._storySetMesh=geo=>setStoryMesh(geo);
+  resize(); window.addEventListener('resize', resize);
 })();
 
 </script>
